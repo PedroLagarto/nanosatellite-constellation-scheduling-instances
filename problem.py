@@ -100,14 +100,14 @@ class Problem:
         for s in range(self.S):
             for t in range(self.T):
                 self.model.addConstr(
-                    sum(self.uso_p[s][j] * self.x[s, j, t] for j in range(self.J))
+                    gp.quicksum(self.uso_p[s][j] * self.x[s, j, t] for j in range(self.J))
                     <= self.recurso[s][t] + self.bat_usage * self.v_bat*(1 - self.alpha[s,t])
                 )
     
             for t in range(self.T):
                 self.model.addConstr(
                     (
-                        sum(self.uso_p[s][j] * self.x[s, j, t] for j in range(self.J)) + self.b[s,t]
+                        gp.quicksum(self.uso_p[s][j] * self.x[s, j, t] for j in range(self.J)) + self.b[s,t]
                         == self.recurso[s][t]
                     )
                 )
@@ -141,43 +141,47 @@ class Problem:
         for j in range(self.J):
             if self.constelation_tasks[j] == 1:
                 self.model.addConstr(
-                    sum(self.phi[s, j, t] for s in range(self.S) for t in range(self.T)) <= self.max_startup_constellation[j]
+                    gp.quicksum(self.phi[s, j, t] for s in range(self.S) for t in range(self.T)) <= self.max_startup_constellation[j]
+                    , name = f"global_startup_max_{j}"
                 )
                 self.model.addConstr(
-                    sum(self.phi[s, j, t] for s in range(self.S) for t in range(self.T)) >= self.min_startup_constellation[j]
+                    gp.quicksum(self.phi[s, j, t] for s in range(self.S) for t in range(self.T)) >= self.min_startup_constellation[j]
+                    , name = f"global_startup_min_{j}"
                 )   
         for s in range(self.S):
             for j in range(self.J):
-                self.model.addConstr(sum(self.phi[s, j, t] for t in range(self.T)) >= self.min_statup[s][j])
-                self.model.addConstr(sum(self.phi[s, j, t] for t in range(self.T)) <= self.max_statup[s][j])
+                self.model.addConstr(gp.quicksum(self.phi[s, j, t] for t in range(self.T)) >= self.min_statup[s][j], name = f"local_min_startup_{s,j}")
+                self.model.addConstr(gp.quicksum(self.phi[s, j, t] for t in range(self.T)) <= self.max_statup[s][j], name = f"local_startup_max_{s,j}")
 
-                self.model.addConstr(sum(self.x[s, j, t] for t in range(self.win_min[s][j]+1)) == 0)
-                self.model.addConstr(sum(self.x[s, j, t] for t in range(self.win_max[s][j]+1, self.T)) == 0)
+                self.model.addConstr(gp.quicksum(self.x[s, j, t] for t in range(self.win_min[s][j]+1)) == 0)
+                self.model.addConstr(gp.quicksum(self.x[s, j, t] for t in range(self.win_max[s][j]+1, self.T)) == 0)
 
             for j in range(self.J):
                 for t in range(0, self.T - self.min_periodo_job[s][j] + 1):
                     self.model.addConstr(
-                        sum(self.phi[s, j, t_] for t_ in range(t, t + self.min_periodo_job[s][j]))
-                        <= 1
+                        gp.quicksum(self.phi[s, j, t_] for t_ in range(t, t + self.min_periodo_job[s][j]))
+                        <= 1,
+                        name = f"min_periodo_job_{s,j,t}"
                     )
                 for t in range(0, self.T - self.max_periodo_job[s][j] + 1):
                     self.model.addConstr(
-                        sum(self.phi[s, j, t_] for t_ in range(t, t + self.max_periodo_job[s][j]))
-                        >= 1
+                        gp.quicksum(self.phi[s, j, t_] for t_ in range(t, t + self.max_periodo_job[s][j]))
+                        >= 1,
+                        name = f"max_periodo_job_{s,j,t}"
                     )
                 for t in range(0, self.T - self.min_cpu_time[s][j] + 1):
                     self.model.addConstr(
-                        sum(self.x[s, j, t_] for t_ in range(t, t + self.min_cpu_time[s][j]))
+                        gp.quicksum(self.x[s, j, t_] for t_ in range(t, t + self.min_cpu_time[s][j]))
                         >= self.min_cpu_time[s][j] * self.phi[s, j, t]
                     )
                 for t in range(0, self.T - self.max_cpu_time[s][j]):
                     self.model.addConstr(
-                        sum(self.x[s, j, t_] for t_ in range(t, t + self.max_cpu_time[s][j] + 1))
+                        gp.quicksum(self.x[s, j, t_] for t_ in range(t, t + self.max_cpu_time[s][j] + 1))
                         <= self.max_cpu_time[s][j]
                     )
                 for t in range(self.T - self.min_cpu_time[s][j] + 1, self.T):
                     self.model.addConstr(
-                        sum(self.x[s, j, t_] for t_ in range(t, self.T)) >= (self.T - t) * self.phi[s, j, t]
+                        gp.quicksum(self.x[s, j, t_] for t_ in range(t, self.T)) >= (self.T - t) * self.phi[s, j, t]
                     )
                 for t in range(self.T):
                         self.model.addConstr(gp.quicksum(self.phi[s,j,t] for t in range(t,min(self.T, t+self.min_cpu_time[s][j]+1))) <= 1, name = f"VI_min_CPU_TIME_phi({j},{t})")

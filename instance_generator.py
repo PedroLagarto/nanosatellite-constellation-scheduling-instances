@@ -29,70 +29,53 @@ class InstanceGenerator:
 
 
     def generate_instance(self):
+        # Parameters
+        min_power = 0.3
+        max_power = 2.50
+
         for s in range(self.S):
+            # Random start for each satellite
             orbit_power = np.loadtxt('irradiation/resource.csv')
             orbit_start = np.random.randint(0, 600)
+
+            # Random priority for each satellite
             self.priority[s] = np.arange(self.J) + 1
             np.random.shuffle(self.priority[s])
+
             for j in range(self.J):
+                # Uniform distribution of power usage between [min_power, max_power]
                 self.power_resource[s] = orbit_power[orbit_start:orbit_start+self.T]
-                min_power = 0.01
-                max_power = 1.00
                 self.power_usage[s][j] = np.random.rand()
                 self.power_usage[s][j] = (max_power - min_power) * self.power_usage[s][j] + min_power
 
-                self.min_cpu_time[s][j] = np.random.randint(1, self.T / 10)
-                self.max_cpu_time[s][j] = np.random.rand()
-                self.max_cpu_time[s][j] = self.max_cpu_time[s][j] * (self.T / 2 - self.min_cpu_time[s][j]) + self.min_cpu_time[s][j]
-                self.max_cpu_time[s][j] = self.max_cpu_time[s][j].astype(int)
-
+                # Random startup time between [1, T/45]
                 min_limit = 1
-                max_limit_min_startup = max(1, int(self.T / 30))
-                max_limit_max_startup = max(max_limit_min_startup + 1, int(self.T / 15))
+                max_limit_min_startup = max(1, np.ceil(self.T / 45))
+                self.min_startup[s][j] = np.random.randint(min_limit, max_limit_min_startup)
 
-                # Ensure min_startup is between 1 and T/30
-                self.min_startup[s][j] = np.random.randint(min_limit, max_limit_min_startup + 1)
+                # Random startup time between [min_startup, T/45]
+                max_limit_max_startup = max(max_limit_min_startup + 1, np.ceil(self.T / 15))
+                self.max_startup[s][j] = np.random.randint(max_limit_min_startup + 1, max_limit_max_startup)
+
+                # Random min
+                self.min_cpu_time[s][j] = np.random.randint(1, np.ceil(self.T / 10))
+                self.max_cpu_time[s][j] = int(np.random.rand() * (np.ceil(self.T / 4) - self.min_cpu_time[s][j]) + self.min_cpu_time[s][j])
+
+                # Random min period between [min_cpu_time, T/4] and max period between [min_period, T]
+                self.min_period_job[s][j] = np.random.uniform(self.min_cpu_time[s][j], np.ceil(self.T / 4))
+                self.max_period_job[s][j] = np.random.uniform(self.min_period_job[s][j], self.T)
                 
-                # Ensure max_startup is between T/30 and T/15
-                self.max_startup[s][j] = np.random.randint(max_limit_min_startup, max_limit_max_startup + 1)
 
-                # max_possible_startup = (self.T / self.min_cpu_time[s][j]).astype(int)
-                # self.min_startup[s][j] = np.random.rand() * (max_possible_startup - 1) + 1
-                # self.min_startup[s][j] = self.min_startup[s][j].astype(int)
-                # self.max_startup[s][j] = np.random.rand()
-                # self.max_startup[s][j] = self.max_startup[s][j] * (self.T - self.min_startup[s][j]) + self.min_startup[s][j]
-                # self.max_startup[s][j] = self.max_startup[s][j].astype(int)
-
-                # max_possible_job_period = (self.T / self.min_startup[s][j]).astype(int)
-                # self.min_period_job[s][j] = np.random.rand()
-                # self.min_period_job[s][j] = self.min_period_job[s][j] * (max_possible_job_period - 1) + 1
-                # self.min_period_job[s][j] = self.min_period_job[s][j].astype(int)
-
-                # self.max_period_job[s][j] = np.random.rand()
-                # self.max_period_job[s][j] = self.max_period_job[s][j] * (self.T - self.min_period_job[s][j]) + self.min_period_job[s][j]
-                # self.max_period_job[s][j] = self.max_period_job[s][j].astype(int)
-
-                self.min_period_job[s][j] = np.random.randint(10, 21)
-                self.max_period_job[s][j] = np.random.randint(40, self.T + 1)
-
-                self.win_min[s][j] = np.random.randint(0, int(self.T/6) + 1)
-                self.win_max[s][j] = np.random.randint(int(self.T*5/6), self.T + 1)
-                self.win_min[s][j] = self.win_min[s][j].astype(int)
-                self.win_max[s][j] = self.win_max[s][j].astype(int)
+                self.win_min[s][j] = np.random.randint(0, np.ceil(self.T/5))
+                self.win_max[s][j] = np.random.randint(self.T - np.ceil(self.T/5), self.T)
 
         for j in range(self.J):
             if self.constellation_tasks[j] == 1:
-                # max_possible_startup = (self.T / self.min_cpu_time[s][j]).astype(int)
-                # self.min_startup_constellation[j] = np.random.rand() * (max_possible_startup - 1) + 1
-                # self.min_startup_constellation[j] = self.min_startup[s][j].astype(int)
-    
-                # self.max_startup_constellation[j] = np.random.rand()
-                # self.max_startup_constellation[j] = self.max_startup[s][j] * (self.T - self.min_startup[s][j]) + self.min_startup[s][j]
-                # self.max_startup_constellation[j] = self.max_startup[s][j].astype(int)
                 self.min_startup_constellation[j] = np.random.randint(1, 3)
                 self.max_startup_constellation[j] = np.random.rand()
                 self.max_startup_constellation[j] = self.max_startup[s][j] * (self.T - self.min_startup[s][j]) + self.min_startup[s][j]
                 self.max_startup_constellation[j] = self.max_startup[s][j].astype(int)
+                self.max_startup_constellation[j] = np.random.randint(3*self.S, 6*self.S)
 
         return {
             "number_satellites": self.S,
